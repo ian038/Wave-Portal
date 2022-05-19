@@ -2,10 +2,15 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { networks } from './networks'
 import './App.css';
+import abi from './WavePortal.json'
 
 export default function App() {
   const [currentAccount, setCurrentAccount] = useState('')
   const [network, setNetwork] = useState('')
+  const [count, setCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const contractAddress = '0x6F04A8051Ce72774B41DbC837e93D0aad14965E2'
+  const contractABI = abi.abi
 
   const checkIfWalletIsConnected = async () => {
     try {
@@ -82,13 +87,51 @@ export default function App() {
     }
   }
 
-  const wave = () => {
+  const getTotalWavesCount = async () => {
+    try {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, provider);
+        let waves = await wavePortalContract.getTotalWaves();
+        setCount(waves.toNumber())
+      } else {
+        console.log("Ethereum object doesn't exist!");
+      }
+    } catch (error) {
+      alert('Error getting total waves count')
+      console.log('Error getting total waves count ', error)
+    }
+  }
 
+  const wave = async () => {
+    try {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        setLoading(true)
+        const waveTxn = await wavePortalContract.wave();
+        await waveTxn.wait();
+        setLoading(false)
+
+        let waves = await wavePortalContract.getTotalWaves();
+        setCount(waves.toNumber())
+      } else {
+        console.log("Ethereum object doesn't exist!");
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   useEffect(() => {
     checkIfWalletIsConnected()
   }, [])
+
+  useEffect(() => {
+    getTotalWavesCount()
+  }, [count])
 
   return (
     <div className="mainContainer">
@@ -101,8 +144,12 @@ export default function App() {
           I am Ian and I develop web3 projects. Connect your Ethereum wallet and wave at me!
         </div>
 
+        <div className="bio">
+          Total wave count: {count}
+        </div>
+
         <button className="waveButton" onClick={wave}>
-          Wave at Me
+          {loading ? 'Loading...' : 'Wave at Me'}
         </button>
 
         {!currentAccount && (
@@ -111,7 +158,7 @@ export default function App() {
           </button>
         )}
 
-        {network !== 'Rinkeby' && (
+        {currentAccount && network !== 'Rinkeby' && (
           <div>
             <p>Please connect to the Rinkeby Testnet</p>
             <button className="waveButton" onClick={switchNetwork}>
