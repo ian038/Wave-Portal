@@ -9,7 +9,9 @@ export default function App() {
   const [network, setNetwork] = useState('')
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(false)
-  const contractAddress = '0x6F04A8051Ce72774B41DbC837e93D0aad14965E2'
+  const [allWaves, setAllWaves] = useState([]);
+  const [msg, setMsg] = useState('')
+  const contractAddress = '0x1b03Ce1d51aEe9698E23E410d6B53AdDD83c2Ab2'
   const contractABI = abi.abi
 
   const checkIfWalletIsConnected = async () => {
@@ -21,6 +23,8 @@ export default function App() {
       const accounts = await window.ethereum.request({ method: "eth_accounts" });
       if (accounts.length !== 0) {
         setCurrentAccount(accounts[0])
+        getAllWaves()
+        getTotalWavesCount()
       } else {
         alert("No authorized account found")
       }
@@ -103,6 +107,31 @@ export default function App() {
     }
   }
 
+  const getAllWaves = async () => {
+    try {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+        const waves = await wavePortalContract.getAllWaves();
+        let wavesCleaned = [];
+        waves.forEach(wave => {
+          wavesCleaned.push({
+            address: wave.waver,
+            timestamp: new Date(wave.timestamp * 1000),
+            message: wave.message
+          });
+        });
+        setAllWaves(wavesCleaned);
+      } else {
+        console.log("Ethereum object doesn't exist!")
+      }
+    } catch (error) {
+      alert('Error getting all waves')
+      console.log(error);
+    }
+  }
+
   const wave = async () => {
     try {
       if (window.ethereum) {
@@ -111,7 +140,8 @@ export default function App() {
         const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
 
         setLoading(true)
-        const waveTxn = await wavePortalContract.wave();
+        const waveTxn = await wavePortalContract.wave(msg);
+        setMsg('')
         await waveTxn.wait();
         setLoading(false)
 
@@ -121,17 +151,15 @@ export default function App() {
         console.log("Ethereum object doesn't exist!");
       }
     } catch (error) {
+      alert('Please make sure your account is connected!')
+      setLoading(false)
       console.log(error);
     }
   }
 
   useEffect(() => {
     checkIfWalletIsConnected()
-  }, [])
-
-  useEffect(() => {
-    getTotalWavesCount()
-  }, [count])
+  }, [currentAccount, count])
 
   return (
     <div className="mainContainer">
@@ -148,6 +176,17 @@ export default function App() {
           Total wave count: {count}
         </div>
 
+        <div className="bio">
+          <textarea
+            value={msg}
+            onChange={(e) => {
+              e.preventDefault();
+              setMsg(e.target.value);
+            }}
+            placeholder='Drop me a message here!'
+          />
+        </div>
+
         <button className="waveButton" onClick={wave}>
           {loading ? 'Loading...' : 'Wave at Me'}
         </button>
@@ -157,6 +196,16 @@ export default function App() {
             Connect Wallet
           </button>
         )}
+
+
+        {allWaves.map((wave, index) => {
+          return (
+            <div key={index} style={{ backgroundColor: "OldLace", marginTop: "16px", padding: "8px" }}>
+              <div>Address: {wave.address}</div>
+              <div>Time: {wave.timestamp.toString()}</div>
+              <div>Message: {wave.message}</div>
+            </div>)
+        })}
 
         {currentAccount && network !== 'Rinkeby' && (
           <div>
