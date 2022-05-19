@@ -1,12 +1,37 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import './App.css';
 
 export default function App() {
+  const [currentAccount, setCurrentAccount] = useState("")
+
+  const checkIfWalletIsConnected = async () => {
+    try {
+      if (!window.ethereum) {
+        alert("Make sure you have metamask!");
+      } else {
+        console.log("We have the ethereum object", window.ethereum);
+      }
+
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (accounts.length !== 0) {
+        const account = accounts[0];
+        setCurrentAccount(account)
+      } else {
+        alert("No authorized account found")
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
   const wave = () => {
 
   }
+
+  useEffect(() => {
+    checkIfWalletIsConnected()
+  }, [])
 
   return (
     <div className="mainContainer">
